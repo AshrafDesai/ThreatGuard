@@ -1,7 +1,6 @@
-<<<<<<< HEAD
 import os
 import pyinotify
-from engine import Engine
+from windows_engine import Engine
 
 def RealTime():
 
@@ -123,10 +122,10 @@ def handle_event(path, event):
             print(f"Error scanning file: {e}")
 
 if __name__ == "__main__":
-    path_to_watch = "/home/ashraf/"
+    path_to_watch = "/"
 
     try:
         watch_directory(path_to_watch)
     except KeyboardInterrupt:
         print("Monitoring stopped.")
->>>>>>> 22a2ff38f7097ebcbe36476aee53845a22e6fc52
+
