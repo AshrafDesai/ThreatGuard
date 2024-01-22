@@ -5,59 +5,6 @@ import pystray
 import PIL.Image
 from screeninfo import get_monitors
 
-#--------------------Global Variable ---------------------# 
-
-
-
-#--------------------Global Variable End ---------------------# 
-
-
-#--------------------Tkinter Base Setup ---------------------# 
-
- 
- 
-# class GetGeometry:
-#     def __init__(self):
-#         self.geometry = []
- 
-#     def get_tkinter_geometry(self, percent_of_screen, xpad=None, ypad=None):
-#         '''
- 
-#         returns: list holding tkinter geometry strings padded with xpad and ypad
-#                 or centered if xpad is None.
-                 
-#                 None if bad pct passed
-#         '''
- 
-#         if not isinstance(percent_of_screen, float):
-#             print("requires float percent eg: 10.0 for 10%")
-#             return
- 
-#         pct = percent_of_screen / 100
- 
-#         for size in get_monitors():
-#             cwidth = int(size.width * pct)
-#             cheight = int(size.height * pct)
- 
-#             xoff = xpad
-#             yoff = ypad
-#             if xpad is None:
-#                 xoff = int((size.width - cwidth) / 2)
-#                 yoff = int((size.height - cheight) / 2)
-#             self.geometry.append(f"{cwidth}x{cheight}+{xoff}+{yoff}")
-
-
-# gg = GetGeometry()
-# # padding specified 10 % of screen dimensions
-# gg.get_tkinter_geometry(10.0, 10, 10)
-# geometry = gg.geometry
-# print(f"\ngeometry - 10% of monitor size 10 pixel x and y padding:\n{geometry}")
- 
-# # padding not specified 60 % of screen dimensions
-# gg.get_tkinter_geometry(60.0)
-# geometry = gg.geometry
-# print(f"\ngeometry - 60% of monitor size centered (no pading specified):\n{geometry}")
-
 
 window = Tk()
 
