@@ -5,7 +5,7 @@ from time import sleep, time
 from pathlib import Path
 import requests
 
-API_KEY = "80b754719c5c72aec5be48f83fe85dea8b64159a346a24c98ee21d67a8f35d96"
+API_KEY = "Your_API_KEY"
 HEADERS = {"x-apikey": API_KEY}
 
 def hash_it(file, algorithm):
