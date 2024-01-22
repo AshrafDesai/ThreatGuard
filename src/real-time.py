@@ -1,42 +1,73 @@
 import os
-import time
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-from engine import Engine 
 
-class RealTimeHandler(FileSystemEventHandler):
-    def __init__(self, engine_instance):
-        self.engine_instance = engine_instance
+import win32file
+import win32con
+import engine
 
-    def on_any_event(self, event):
-        if event.is_directory:
-            return
+def RealTime(): 
 
-        file_path = os.path.abspath(event.src_path)
+  usernameUp = os.environ.get('USERNAME').upper().split(" ")
+  username = os.environ.get('USERNAME')
 
-        # Add your path filtering conditions here
-        if file_path.startswith("C:\\Users\\{}\\AppData\\".format(os.environ.get('USERNAME'))):
-            return
-        # Add more conditions based on your requirements
+  ACTIONS = {
+    1 : "Created",
+    2 : "Deleted",
+    3 : "Updated",
+    4 : "Renamed from something",
+    5 : "Renamed to something"
+  }
 
-        try:
-            self.engine_instance.virusScanner(file_path)  # Use the virusScanner method from the Engine
-        except Exception as e:
-            print(f"Error scanning file {file_path}: {e}")
+  FILE_LIST_DIRECTORY = 0x0001
 
-def real_time_monitor(path_to_watch):
-    engine_instance = Engine("md5")  # Create an instance of the Engine
-    event_handler = RealTimeHandler(engine_instance)
-    observer = Observer()
-    observer.schedule(event_handler, path=path_to_watch, recursive=True)
-    observer.start()
+  path_to_watch = "C:\\"
+  hDir = win32file.CreateFile (
+    path_to_watch,
+    FILE_LIST_DIRECTORY,
+    win32con.FILE_SHARE_READ | win32con.FILE_SHARE_WRITE | win32con.FILE_SHARE_DELETE,
+    None,
+    win32con.OPEN_EXISTING,
+    win32con.FILE_FLAG_BACKUP_SEMANTICS,
+    None
+  )
+  while 1:
+  
+    results = win32file.ReadDirectoryChangesW (
+      hDir,
+      1024,
+      True,
+      win32con.FILE_NOTIFY_CHANGE_FILE_NAME |
+      win32con.FILE_NOTIFY_CHANGE_DIR_NAME |
+      win32con.FILE_NOTIFY_CHANGE_ATTRIBUTES |
+      win32con.FILE_NOTIFY_CHANGE_SIZE |
+      win32con.FILE_NOTIFY_CHANGE_LAST_WRITE |
+      win32con.FILE_NOTIFY_CHANGE_SECURITY,
+      None,
+      None
+    )
 
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        observer.stop()
-    observer.join()
+    paths = [] 
+  
+    for action, file in results:
+      paths.append(os.path.join (path_to_watch, file))
+    
+      if paths[0][0:32] == "C:\\Users\\{}\\AppData\\".format(username):paths.clear()
+      elif paths[0][0:18] == "C:\\Users\\{}~1\\".format(usernameUp[0]):paths.clear()
+      elif paths[0][0:20] == "C:\\Windows\\Prefetch\\":paths.clear()
+      elif paths[0][0:15] == "C:\\Windows\\Temp":paths.clear()
+      elif paths[0][0:15] == "C:\\$Recycle.Bin":paths.clear()
+      elif paths[0][0:14] == "C:\\ProgramData":paths.clear()
+      elif paths[0][0:23] == "C:\\Windows\\ServiceState":paths.clear()
+      elif paths[0][0:15] == "C:\\Windows\\Logs":paths.clear()
+      elif paths[0][0:26] == "C:\\Windows\\ServiceProfiles":paths.clear()
+      elif paths[0][0:19] == "C:\\Windows\\System32":paths.clear()
+      elif paths[0][0:28] == "C:\\Program Files\\CUAssistant":paths.clear()
+      elif paths[0][0:23] == "C:\\Windows\\bootstat.dat":paths.clear()
 
-if __name__ == "__main__":
-    real_time_monitor("D:\\")
+      # try:print (paths[0], ACTIONS.get (action, "Unknown"))
+      # except:pass
+      try:engine.virusScanner(paths[0])
+      except:pass
+      paths.clear()
+    
+
+RealTime()
