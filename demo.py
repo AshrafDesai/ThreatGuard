@@ -84,7 +84,7 @@ def scan_folder(api_key, folder_path):
         print("All files are clean. No viruses found.")
 
 # Replace 'YOUR_API_KEY' with your actual VirusTotal API key
-api_key = 'ad5d58b0ce9b93a7646c3fe87053cb2e7f9d5fa8963060107bb9aef41ab8c354'
+api_key = 'your_api_key'
 # Replace 'YOUR_FOLDER_PATH' with the path to the folder you want to scan
 folder_path = 'D:\\Tools'
 
