@@ -1,13 +1,11 @@
-
-from hashlib import sha256, md5
-import time
+from hashlib import md5, sha256
 import os
-
-start = time.time()
+import time
 
 class Engine:
     def __init__(self, typeH):
         base_path = "DataBase/HashDataBase"
+
         if typeH.lower() == "sha256":
             with open(os.path.join(base_path, "Sha256/virusHash.unibit"), "r") as i:
                 self.hashList = i.readlines()
@@ -54,34 +52,51 @@ class Engine:
 
         if pointFound == 1:
             return positionOfPoint
+
         else:
             return None
 
     def sha256_hash(self, filename):
-        import hashlib
         try:
             with open(filename, "rb") as f:
                 bytes = f.read()
-                sha256hash = hashlib.sha256(bytes).hexdigest()
-                f.close()
+                sha256hash = sha256(bytes).hexdigest()
             return sha256hash
-        except:
-            return 0
+        except Exception as e:
+            print(f"Error calculating SHA256 hash: {e}")
+            return None
 
     def Md5_hash(self, filename):
-        import hashlib
         try:
             with open(filename, "rb") as f:
                 bytes = f.read()
-                md5Hash = hashlib.md5(bytes).hexdigest()
-                f.close()
+                md5Hash = md5(bytes).hexdigest()
             return md5Hash
-        except:
-            return 0
+        except Exception as e:
+            print(f"Error calculating MD5 hash: {e}")
+            return None
+
+    def calculate_hashes(self, path):
+        file_hashes = {}
+
+        # Get the list of all files in directory tree at given path
+        dir_list = list()
+        for (dirpath, dirnames, filenames) in os.walk(path):
+            dir_list += [os.path.join(dirpath, file) for file in filenames]
+
+        print(f"\nCalculating hashes of files in directory: {path}")
+        for i, file_path in enumerate(dir_list):
+            try:
+                print(f"Calculating hash for file {i + 1}/{len(dir_list)}: {file_path}...")
+                md5_hash = self.Md5_hash(file_path)
+                sha256_hash = self.sha256_hash(file_path)
+                file_hashes[file_path] = {'md5': md5_hash, 'sha256': sha256_hash}
+            except Exception as e:
+                print(f"Error calculating hash for file {file_path}: {e}")
+
+        return file_hashes
 
     def virusScannerSha256(self, path):
-        import os
-
         self.virusPath = []
         self.virusHashCyPy = []
 
@@ -92,27 +107,31 @@ class Engine:
 
         ioList.sort()
 
+        # Get the list of all files in directory tree at given path
         dir_list = list()
         for (dirpath, dirnames, filenames) in os.walk(path):
             dir_list += [os.path.join(dirpath, file) for file in filenames]
 
-        for i in dir_list:
+        print(f"\nScanning directory: {path}")
+        for i, file_path in enumerate(dir_list):
             try:
+                print(f"Scanning file {i + 1}/{len(dir_list)}: {file_path}...")
                 vIHash = self.binaryTreeSearch(
-                    ioList, self.hashToFullNum(self.sha256_hash(i)))
-                print(i)
-                if vIHash:
-                    self.virusHashCyPy.append(vIHash)
-                    self.virusPath.append(i)
+                    ioList, self.hashToFullNum(self.sha256_hash(file_path)))
 
-            except:
-                pass
+                if vIHash:
+                    print(f"File {file_path} is infected.")
+                    self.virusHashCyPy.append(vIHash)
+                    self.virusPath.append(file_path)
+                else:
+                    print(f"File {file_path} is clean.")
+
+            except Exception as e:
+                print(f"Error scanning file {file_path}: {e}")
 
         return self.virusHashCyPy, self.virusPath
 
     def virusScannerMd5(self, path):
-        import os
-
         self.virusPath = []
         self.virusHashCyPy = []
 
@@ -123,88 +142,60 @@ class Engine:
 
         ioList.sort()
 
+        # Get the list of all files in directory tree at given path
         dir_list = list()
         for (dirpath, dirnames, filenames) in os.walk(path):
             dir_list += [os.path.join(dirpath, file) for file in filenames]
 
-        for i in dir_list:
+        print(f"\nScanning directory: {path}")
+        for i, file_path in enumerate(dir_list):
             try:
+                print(f"Scanning file {i + 1}/{len(dir_list)}: {file_path}...")
                 vIHash = self.binaryTreeSearch(
-                    ioList, self.hashToFullNum(self.Md5_hash(i)))
-                print(i)
-                if vIHash:
-                    self.virusHashCyPy.append(vIHash)
-                    self.virusPath.append(i)
+                    ioList, self.hashToFullNum(self.Md5_hash(file_path)))
 
-            except:
-                pass
+                if vIHash:
+                    print(f"File {file_path} is infected.")
+                    self.virusHashCyPy.append(vIHash)
+                    self.virusPath.append(file_path)
+                else:
+                    print(f"File {file_path} is clean.")
+
+            except Exception as e:
+                print(f"Error scanning file {file_path}: {e}")
 
         return self.virusHashCyPy, self.virusPath
 
-    def CacheFileRemover(self):
-        temp_list = list()
+if __name__ == "__main__":
+    try:
+        folder_path = input("Enter the full path of the directory to scan: ").strip()
+        if not os.path.exists(folder_path):
+            raise ValueError("Invalid directory path. Please provide a valid path.")
+        
+        start = time.time()
 
-        username = os.environ.get('USERNAME').upper().split(" ")
+        # Initialize the Engine with the desired hash type
+        engine = Engine("md5")
 
-        for (dirpath, dirnames, filenames) in os.walk("/tmp"):
-            temp_list += [os.path.join(dirpath, file) for file in filenames]
-            temp_list += [os.path.join(dirpath, file) for file in dirnames]
+        # Calculate hashes of all files in the directory
+        file_hashes = engine.calculate_hashes(folder_path)
+        print("\nHashes of Files:")
+        for file_path, hashes in file_hashes.items():
+            print(f"{file_path} => MD5: {hashes['md5']}, SHA256: {hashes['sha256']}")
+        print("Started Comparing the hashes generated with the created database")
 
-        for (dirpath, dirnames, filenames) in os.walk("/var/tmp"):
-            temp_list += [os.path.join(dirpath, file) for file in filenames]
-            temp_list += [os.path.join(dirpath, file) for file in dirnames]
+        # Perform scanning using the Engine
+        virus_hashes, infected_files = engine.virusScannerMd5(folder_path)
 
-        for (dirpath, dirnames, filenames) in os.walk("/var/cache"):
-            temp_list += [os.path.join(dirpath, file) for file in filenames]
-            temp_list += [os.path.join(dirpath, file) for file in dirnames]
-
-        if temp_list:
-            for i in temp_list:
-                print(i)
-
-                try:
-                    os.remove(i)
-                except:
-                    pass
-
-                try:
-                    os.rmdir(i)
-                except:
-                    pass
+        print("\nScan Results:")
+        if infected_files:
+            print(f"Infected Files in directory {folder_path}:")
+            for file_info in infected_files:
+                print(f"{file_info} is infected.")
         else:
-            return 0
+            print(f"All files in directory {folder_path} are clean. No viruses found.")
 
-    def ramBooster(self):
-        pass
-
-    def FlowDetectorIo(self, path, bit_size):
-        with open("DataBase/Flow Detection/flow_exe.unibit", "r") as rFile:
-            io = rFile.readlines()
-            rFile.close()
-
-        with open(path, "rb") as rFile:
-            nj = list(rFile.read())
-            rFile.close()
-
-        njStr = ''
-
-        for i in nj:
-            njStr += str(i)
-
-        bX = 0
-
-        for f in io:
-            for i in range(0, len(f), bit_size):
-                if njStr.find(f[i:i+bit_size]) != -1:
-                    bX += 1
-
-            if flen := len(f)/bit_size:
-                prLen = (bX/flen)*100
-
-        return prLen
-
-
-io = Engine("md5")
-
-end = time.time()
-print(end - start)
+        end = time.time()
+        print(f"\nScanning completed in {end - start} seconds.")
+    except Exception as e:
+        print(f"Error: {e}")
