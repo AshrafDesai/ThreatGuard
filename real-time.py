@@ -1,42 +1,61 @@
-import os
 import time
+import logging
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from engine import Engine 
+import engine
 
-class RealTimeHandler(FileSystemEventHandler):
-    def __init__(self, engine_instance):
-        self.engine_instance = engine_instance
 
-    def on_any_event(self, event):
+logging.basicConfig(level=logging.INFO)
+
+
+engine_instance = engine.Engine("md5") 
+
+class VirusScanner(FileSystemEventHandler):
+    def on_created(self, event):
         if event.is_directory:
-            return
+            logging.info(f"Folder created: {event.src_path}")
+        else:
+            logging.info(f"File created: {event.src_path}")
+            # Scan the file for viruses
+            result = engine_instance.quick_scan(event.src_path, [".jpg", ".png", ".pdf", ".ppt"])
+            if result[1]:
+                logging.warning("Virus found in file: {}".format(event.src_path))
+                
+            else:
+                logging.info("File is clean.")
 
-        file_path = os.path.abspath(event.src_path)
+    def on_deleted(self, event):
+        if event.is_directory:
+            logging.info(f"Folder deleted: {event.src_path}")
+        else:
+            logging.info(f"File deleted: {event.src_path}")
 
-        # Add your path filtering conditions here
-        if file_path.startswith("C:\\Users\\{}\\AppData\\".format(os.environ.get('USERNAME'))):
-            return
-        # Add more conditions based on your requirements
+    def on_modified(self, event):
+        if event.is_directory:
+            logging.info(f"Folder modified: {event.src_path}")
+        else:
+            logging.info(f"File modified: {event.src_path}")
+           
 
-        try:
-            self.engine_instance.virusScanner(file_path)  # Use the virusScanner method from the Engine
-        except Exception as e:
-            print(f"Error scanning file {file_path}: {e}")
+    def on_moved(self, event):
+        if event.is_directory:
+            logging.info(f"Folder moved: {event.src_path} to {event.dest_path}")
+        else:
+            logging.info(f"File moved: {event.src_path} to {event.dest_path}")
 
-def real_time_monitor(path_to_watch):
-    engine_instance = Engine("md5")  # Create an instance of the Engine
-    event_handler = RealTimeHandler(engine_instance)
+if __name__ == "__main__":
+    
+    directory_to_watch = r"C:\Ashraf"  
+
+   
     observer = Observer()
-    observer.schedule(event_handler, path=path_to_watch, recursive=True)
+    observer.schedule(VirusScanner(), directory_to_watch, recursive=True)
     observer.start()
 
     try:
-        while True:
+        while observer.is_alive():
             time.sleep(1)
     except KeyboardInterrupt:
         observer.stop()
-    observer.join()
-
-if __name__ == "__main__":
-    real_time_monitor("D:\\")
+        observer.join()  # Wait for the observer to stop
+        
