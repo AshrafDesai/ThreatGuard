@@ -1,209 +1,226 @@
-from hashlib import md5
 import os
+import hashlib
 import time
+from pathlib import Path
+import logging
 
+logging.basicConfig(level=logging.INFO)
 
 class Engine:
-
     def __init__(self, typeH):
         if typeH.lower() == "sha256":
-            with open("DataBase\\HashDataBase\\Sha256\\virusHash.unibit", "r") as i:
-                self.hashList = i.readlines()
-                i.close()
-
-        if typeH.lower() == "md5":
-            with open("DataBase\\HashDataBase\\Md5\\md5HashOfVirus.unibit", "r") as i:
-                self.hashList = i.readlines()
-                i.close()
-
-    def hashToFullNum(self, hash):
-        alpha = 'abcdefghijklmnopqrstuvwxyz'
-        alphaNum = {'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7, 'h': 8,
-                    'i': 9, 'j': 10, 'k': 11, 'l': 12, 'm': 13, 'n': 14, 'o': 15, 'p': 16, 'q': 17,
-                    'r': 18, 's': 19, 't': 20, 'u': 21, 'v': 22, 'w': 23, 'x': 24, 'y': 25, 'z': 26}
-
-        j = ''
-
-        sampleHash = hash.lower()
-
-        for i in sampleHash:
-            if i in alpha:
-                i = alphaNum[i]
-
-            j = j + str(i)
-
-        return int(j)
-
-    def binaryTreeSearch(self, hList, valueToFind):
-        initialValue = 0
-        lengthOfList = len(hList) - 1
-        pointFound = 0
-
-        while (initialValue < lengthOfList and pointFound == 0):
-            middle = (initialValue + lengthOfList) // 2
-
-            if hList[middle] == valueToFind:
-                pointFound = 1
-                positionOfPoint = middle
-
-            if hList[middle] > valueToFind:
-                lengthOfList = middle
-
-            if hList[middle] < valueToFind:
-                initialValue = middle + 1
-
-        if pointFound == 1:
-            return positionOfPoint
-
+            self.hash_file_path = "DataBase/HashDataBase/Sha256/virusHash.unibit"
+        elif typeH.lower() == "md5":
+            self.hash_file_path = "DataBase/HashDataBase/Md5/md5HashOfVirus.unibit"
         else:
-            return None
+            raise ValueError("Invalid hash type. Supported types are 'sha256' and 'md5'.")
 
-    def sha256_hash(self, filename):
-        import hashlib
-        try:
-            with open(filename, "rb") as f:
-                bytes = f.read()
-                sha256hash = hashlib.sha256(bytes).hexdigest()
-                f.close()
-            return sha256hash
-        except:
-            return 0
+        with open(self.hash_file_path, "r") as hash_file:
+            self.hashList = hash_file.readlines()
 
-    def Md5_hash(self, filename):
-        import hashlib
-        try:
-            with open(filename, "rb") as f:
-                bytes = f.read()
-                md5Hash = hashlib.md5(bytes).hexdigest()
-                f.close()
-            return md5Hash
-        except:
-            return 0
+    def hash_to_full_num(self, hash):
+        alpha = 'abcdefghijklmnopqrstuvwxyz'
+        alpha_num = {char: str(i + 1) for i, char in enumerate(alpha)}
+        result = ''.join(alpha_num.get(char, char) for char in hash.lower())
+        return int(result)
+
+    def binary_tree_search(self, h_list, value_to_find):
+        initial_value, length_of_list = 0, len(h_list) - 1
+        point_found = False
+
+        while initial_value < length_of_list and not point_found:
+            middle = (initial_value + length_of_list) // 2
+
+            if h_list[middle] == value_to_find:
+                point_found = True
+                position_of_point = middle
+
+            if h_list[middle] > value_to_find:
+                length_of_list = middle
+
+            if h_list[middle] < value_to_find:
+                initial_value = middle + 1
+
+        return position_of_point if point_found else None
 
     def calculate_hashes(self, path):
         file_hashes = {}
 
-        # Get the list of all files in directory tree at given path
-        dir_list = list()
-        for (dirpath, dirnames, filenames) in os.walk(path):
-            dir_list += [os.path.join(dirpath, file) for file in filenames]
-
-        print(f"\nCalculating hashes of files in directory: {path}")
-        for i, file_path in enumerate(dir_list):
-            try:
-                print(f"Calculating hash for file {i + 1}/{len(dir_list)}: {file_path}...")
-                md5_hash = self.Md5_hash(file_path)
-                sha256_hash = self.sha256_hash(file_path)
-                file_hashes[file_path] = {'md5': md5_hash, 'sha256': sha256_hash}
-            except Exception as e:
-                print(f"Error calculating hash for file {file_path}: {e}")
+        for file_path in Path(path).rglob("*"):
+            if file_path.is_file():
+                try:
+                    with open(file_path, "rb") as f:
+                        file_hash = hashlib.md5()
+                        while chunk := f.read(4096):
+                            file_hash.update(chunk)
+                        md5_hash = file_hash.hexdigest()
+                        sha256_hash = hashlib.sha256(chunk).hexdigest()
+                        file_hashes[file_path] = {'md5': md5_hash, 'sha256': sha256_hash}
+                except Exception as e:
+                    logging.error(f"Error calculating hash for file {file_path}: {e}")
 
         return file_hashes
 
-    def virusScannerSha256(self, path):
-        self.virusPath = []
-        self.virusHashCyPy = []
+    def virus_scanner(self, path_list, hash_function, scan_type):
+        virus_path = []
+        virus_hash_cy_py = []
 
-        ioList = []
+        io_list = [self.hash_to_full_num(hash_val) for hash_val in self.hashList]
+        io_list.sort()
 
-        for i in self.hashList:
-            ioList.append(self.hashToFullNum(i))
-
-        ioList.sort()
-
-        # Get the list of all files in directory tree at given path
-        dir_list = list()
-        for (dirpath, dirnames, filenames) in os.walk(path):
-            dir_list += [os.path.join(dirpath, file) for file in filenames]
-
-        print(f"\nScanning directory: {path}")
-        for i, file_path in enumerate(dir_list):
+        logging.info(f"\nStarted {scan_type} scan...")
+        for file_path in path_list:
             try:
-                print(f"Scanning file {i + 1}/{len(dir_list)}: {file_path}...")
-                vIHash = self.binaryTreeSearch(
-                    ioList, self.hashToFullNum(self.sha256_hash(file_path)))
+                directory_name = file_path.parent
+                file_name = file_path.name
+                logging.info(f"Scanning directory: {directory_name}, File: {file_name}...")
 
-                if vIHash:
-                    print(f"File {file_path} is infected.")
-                    self.virusHashCyPy.append(vIHash)
-                    self.virusPath.append(file_path)
+                logging.info(f"Calculating hash for file: {file_path}...")
+                hash_value = hash_function(file_path)
+                v_i_hash = self.binary_tree_search(io_list, self.hash_to_full_num(hash_value))
+
+                if v_i_hash:
+                    logging.info(f"File {file_path} is infected.")
+                    virus_hash_cy_py.append(v_i_hash)
+                    virus_path.append(file_path)
                 else:
-                    print(f"File {file_path} is clean.")
+                    logging.info(f"File {file_path} is clean.")
 
             except Exception as e:
-                print(f"Error scanning file {file_path}: {e}")
+                logging.error(f"Error scanning file {file_path}: {e}")
 
-        return self.virusHashCyPy, self.virusPath
+        logging.info(f"{scan_type} scan completed.")
 
-    def virusScannerMd5(self, path):
-        self.virusPath = []
-        self.virusHashCyPy = []
+        if virus_path:
+            logging.info("Virus found.")
+        else:
+            logging.info("No Virus Found.")
 
-        ioList = []
+        return virus_hash_cy_py, virus_path
 
-        for i in self.hashList:
-            ioList.append(self.hashToFullNum(i))
+    def md5_hash(self, file_path):
+        try:
+            with open(file_path, "rb") as f:
+                file_hash = hashlib.md5()
+                while chunk := f.read(4096):
+                    file_hash.update(chunk)
+                md5_hash = file_hash.hexdigest()
+            return md5_hash
+        except Exception as e:
+            logging.error(f"Error calculating MD5 hash for file {file_path}: {e}")
+            return ''
 
-        ioList.sort()
+    def quick_scan(self, path, extensions):
+        files_to_scan = [file_path for file_path in Path(path).rglob("*") if file_path.is_file() and file_path.suffix.lower() in extensions]
+        result = self.virus_scanner(files_to_scan, self.md5_hash, "Quick")
+        self.update_report(result, path, "Quick")
+        return result
 
-        # Get the list of all files in directory tree at given path
-        dir_list = list()
-        for (dirpath, dirnames, filenames) in os.walk(path):
-            dir_list += [os.path.join(dirpath, file) for file in filenames]
+    def full_scan(self, path):
+        all_files = [file_path for file_path in Path(path).rglob("*") if file_path.is_file()]
+        result = self.virus_scanner(all_files, self.md5_hash, "Full")
+        self.update_report(result, path, "Full")
+        return result
 
-        print(f"\nScanning directory: {path}")
-        for i, file_path in enumerate(dir_list):
-            try:
-                print(f"Scanning file {i + 1}/{len(dir_list)}: {file_path}...")
-                vIHash = self.binaryTreeSearch(
-                    ioList, self.hashToFullNum(self.Md5_hash(file_path)))
+    def deep_scan(self, root_path):
+        all_files = [file_path for file_path in Path(root_path).rglob("*") if file_path.is_file()]
+        result = self.virus_scanner(all_files, self.md5_hash, "Deep")
+        self.update_report(result, root_path, "Deep")
+        return result
 
-                if vIHash:
-                    print(f"File {file_path} is infected.")
-                    self.virusHashCyPy.append(vIHash)
-                    self.virusPath.append(file_path)
+    def custom_scan(self, path):
+        file_details = []
+        scanned_files = []
+
+        for file_path in Path(path).rglob("*"):
+            if file_path.is_file():
+                try:
+                    file_stats = file_path.stat()
+                    file_details.append({
+                        "File Name": file_path.name,
+                        "Size (bytes)": file_stats.st_size,
+                        "Creation Time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(file_stats.st_ctime)),
+                        "Last Modified Time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(file_stats.st_mtime))
+                    })
+                    scanned_files.append(str(file_path))  # Store path of scanned file
+                except Exception as e:
+                    logging.error(f"Error getting details for file {file_path}: {e}")
+
+        result = file_details, scanned_files
+        self.update_report(result, path, "Custom")
+        return result
+
+    def update_report(self, result, folder_path, scan_type):
+        start = time.strftime("%Y-%m-%d %H:%M:%S")
+        end = time.strftime("%Y-%m-%d %H:%M:%S")
+
+        if result:
+            if scan_type == "custom":
+                file_details, scanned_files = result
+                logging.info(f"Scanned Files: {scanned_files}")
+                logging.info("File Details:")
+                for detail in file_details:
+                    logging.info(detail)
+            else:
+                if isinstance(result, tuple):
+                    virus_hash_cy_py, virus_path = result
+                    report_data = [f"Scanned Files: {virus_path[i]}, Virus Hash: {virus_hash_cy_py[i]}" for i in range(len(virus_path))]
                 else:
-                    print(f"File {file_path} is clean.")
+                    report_data = ["File Details:"] + [f"{detail}" for detail in result]
+                report_data.extend([
+                    f"Scanned Folder: {folder_path}",
+                    f"Scan Type: {scan_type}",
+                    f"Start Time: {start}",
+                    f"End Time: {end}",
+                    f"Scan Results: Virus Found" if virus_path else "Scan Results: No Virus Found"
+                ])
+                save_report(report_data, "scan_report.txt")
+        else:
+            save_report(["No Virus Found."], "scan_report.txt")
 
-            except Exception as e:
-                print(f"Error scanning file {file_path}: {e}")
+def run_scan(scan_function, *args):
+    start_time = time.time()
+    result = scan_function(*args)
+    end_time = time.time()
+    print("\n")
+    print("\n")
+    logging.info(f"Total time taken for scanning: {end_time - start_time:.2f} seconds.")
+    return result
 
-        return self.virusHashCyPy, self.virusPath
-
-
-def scan_folder(folder_path):
-    # Initialize the Engine with the desired hash type
-    engine = Engine("md5")
-
-    # Calculate hashes of all files in the directory
-    file_hashes = engine.calculate_hashes(folder_path)
-    print("\nHashes of Files:")
-    for file_path, hashes in file_hashes.items():
-        print(f"{file_path} => MD5: {hashes['md5']}, SHA256: {hashes['sha256']}")
-    print("Started Comparing the hashes generated with the created database")
-    # Perform scanning using the Engine
-    virus_hashes, infected_files = engine.virusScannerMd5(folder_path)
-
-    print("\nScan Results:")
-    if infected_files:
-        print(f"Infected Files in directory {folder_path}:")
-        for file_info in infected_files:
-            print(f"{file_info} is infected.")
-    else:
-        print(f"All files in directory {folder_path} are clean. No viruses found.")
-
+def save_report(report_data, report_path):
+    try:
+        with open(report_path, "a",encoding="utf-8") as report_file: 
+            if report_file.tell() != 0:  
+                report_file.write("\n")  
+            report_file.write("\n".join(report_data) + "\n") 
+        logging.info(f"Report updated successfully at: {report_path}")
+    except Exception as e:
+        logging.error(f"Error updating report: {e}")
 
 if __name__ == "__main__":
     try:
+        hash_type = input("Choose the hash type (MD5/SHA256): ").strip().lower()
+        if hash_type not in ['md5', 'sha256']:
+            raise ValueError("Invalid hash type. Supported types are 'md5' and 'sha256'.")
+
         folder_path = input("Enter the full path of the directory to scan: ").strip()
-        if not os.path.exists(folder_path):
+        if not Path(folder_path).is_dir():
             raise ValueError("Invalid directory path. Please provide a valid path.")
-        
-        start = time.time()
 
-        scan_folder(folder_path)
+        scan_choice = input("Choose the scan type (quick/full/deep/custom): ").strip().lower()
 
-        end = time.time()
-        print(f"\nScanning completed in {end - start} seconds.")
+        engine = Engine(hash_type)
+
+        if scan_choice == "quick":
+            extensions = [".jpg", ".png", ".pdf", ".ppt"]
+            result = run_scan(engine.quick_scan, folder_path, extensions)
+        elif scan_choice == "full":
+            result = run_scan(engine.full_scan, folder_path)
+        elif scan_choice == "deep":
+            result = run_scan(engine.deep_scan, folder_path)
+        elif scan_choice == "custom":
+            result = run_scan(engine.custom_scan, folder_path)
+
+        logging.info(f"\nScanning completed.")
     except Exception as e:
-        print(f"Error: {e}")
+        logging.error(f"Error: {e}")
